@@ -1,0 +1,330 @@
+'use strict';
+
+/* ══════════════════════════════════════════
+   CHAIRMAN — Subject Assignment & Failing (API)
+══════════════════════════════════════════ */
+
+registerPage('chair-assign',  renderChairAssign);
+registerPage('chair-failing', renderChairFailing);
+
+/* ══════════════════════════════════════════
+   SUBJECT ASSIGNMENT
+══════════════════════════════════════════ */
+async function renderChairAssign() {
+  set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
+  try {
+    // Load subjects, sections, students, faculty all at once
+    const [subjects, sections, students, users] = await Promise.all([
+      api.getSubjects(),
+      api.getSections(),
+      api.getStudents(),
+      api.getUsers(),
+    ]);
+
+    const faculty = users.filter(u =>
+      u.role === 'Faculty' &&
+      u.dept_id === currentUser.dept_id &&
+      u.active
+    );
+
+    // Map sections onto subjects
+    const subjectRows = subjects.map(subj => {
+      const subSecs = sections.filter(s => s.subject_id === subj.id);
+      return { ...subj, sections: subSecs };
+    });
+
+    // Store for modal use
+    window._chairSubjects = subjects;
+    window._chairSections = sections;
+    window._chairFaculty  = faculty;
+    window._chairStudents = students;
+    window._chairUsers    = users;
+
+    set(`
+      <div class="page-header">
+        <div class="page-title">Subject Assignment</div>
+        <button class="btn btn-primary" onclick="showCreateSectionModal()">+ Create Section</button>
+      </div>
+
+      <!-- Subjects table -->
+      <div class="section-card mb-20">
+        <div class="section-card-head">
+          <div class="fw-7">Subjects in Your Department</div>
+          <div class="text-xs text-muted">${subjects.length} subject${subjects.length !== 1 ? 's' : ''}</div>
+        </div>
+        ${subjects.length === 0
+          ? `<div class="section-card-body"><div class="empty" style="padding:24px">
+              <div class="empty-icon">📚</div>
+              <div class="empty-text">No subjects found for your department.<br>Contact the Registrar to add subjects.</div>
+             </div></div>`
+          : `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>Code</th><th>Subject Name</th><th>Units</th><th>Year</th><th>Sem</th><th>Sections</th><th>Faculty</th><th></th>
+              </tr></thead>
+              <tbody>
+                ${subjectRows.map(subj => {
+                  const facIds   = [...new Set(subj.sections.map(s => s.faculty_id).filter(Boolean))];
+                  const facNames = facIds.map(id => users.find(u => u.id === id)?.name || '—').join(', ');
+                  return `<tr>
+                    <td><span class="chip">${esc(subj.code)}</span></td>
+                    <td class="fw-6">${esc(subj.name)}</td>
+                    <td>${subj.units}</td>
+                    <td>Year ${subj.year}</td>
+                    <td>${esc(subj.sem)} Sem</td>
+                    <td>
+                      ${subj.sections.length === 0
+                        ? `<span class="text-muted text-xs">No sections</span>`
+                        : subj.sections.map(s =>
+                            `<span class="badge badge-blue" style="margin:2px">${esc(s.section_name)}</span>`
+                          ).join('')}
+                    </td>
+                    <td class="text-sm text-muted">${facNames || '<span class="text-muted text-xs">Unassigned</span>'}</td>
+                    <td>
+                      <button class="btn btn-sm btn-primary" onclick="showCreateSectionModal(${subj.id})">+ Section</button>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table></div>`}
+      </div>
+
+      <!-- All sections table -->
+      <div class="section-card">
+        <div class="section-card-head">
+          <div class="fw-7">All Sections</div>
+          <div class="text-xs text-muted">Manage faculty and student enrollment</div>
+        </div>
+        ${sections.length === 0
+          ? `<div class="section-card-body"><div class="text-muted text-sm">No sections created yet. Click "+ Create Section" above to get started.</div></div>`
+          : `<div class="table-wrap"><table>
+              <thead><tr>
+                <th>Subject</th><th>Section</th><th>Faculty</th><th>SY</th><th>Sem</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody>
+                ${sections.map(sec => `<tr>
+                  <td><span class="chip">${esc(sec.subject_code)}</span> <span class="text-sm">${esc(sec.subject_name)}</span></td>
+                  <td class="fw-6">${esc(sec.section_name)}</td>
+                  <td class="text-sm">${sec.faculty_name || '<span class="text-muted">Unassigned</span>'}</td>
+                  <td class="text-sm text-muted">${esc(sec.sy)}</td>
+                  <td class="text-sm text-muted">${esc(sec.sem)} Sem</td>
+                  <td><span class="badge badge-${sec.submitted ? 'success' : 'muted'}">${sec.submitted ? '✔ Submitted' : 'Open'}</span></td>
+                  <td class="flex gap-8">
+                    <button class="btn btn-sm btn-ghost" onclick="showReassignModal(${sec.id},'${esc(sec.section_name)}',${sec.faculty_id || 'null'})">✎ Faculty</button>
+                    <button class="btn btn-sm btn-ghost" onclick="showEnrollModal(${sec.id},'${esc(sec.section_name)}')">👥 Students</button>
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table></div>`}
+      </div>
+    `);
+  } catch (err) { apiErr(err); }
+}
+
+/* ── Create Section Modal ────────────── */
+function showCreateSectionModal(preSubjId = null) {
+  const subjects = window._chairSubjects || [];
+  const faculty  = window._chairFaculty  || [];
+
+  showModal('Create Section', `
+    <div class="field-wrap">
+      <label class="field-label">Subject</label>
+      <select id="cs-subj" class="field-select">
+        <option value="">— Select Subject —</option>
+        ${subjects.map(s =>
+          `<option value="${s.id}" ${s.id === preSubjId ? 'selected' : ''}>${esc(s.code)} — ${esc(s.name)}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Section Name</label>
+      <input id="cs-name" class="field-input" placeholder="e.g. IT1A" />
+    </div>
+    <div class="grid-2">
+      <div class="field-wrap">
+        <label class="field-label">School Year</label>
+        <input id="cs-sy" class="field-input" value="2024-2025" />
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Semester</label>
+        <select id="cs-sem" class="field-select">
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="Summer">Summer</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Assign Faculty <span class="text-muted">(optional)</span></label>
+      <select id="cs-fac" class="field-select">
+        <option value="">— Unassigned —</option>
+        ${faculty.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('')}
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doCreateSection()">Create Section</button>
+  `);
+}
+
+async function doCreateSection() {
+  const subjId = parseInt(document.getElementById('cs-subj').value);
+  const name   = document.getElementById('cs-name').value.trim();
+  const sy     = document.getElementById('cs-sy').value.trim();
+  const sem    = document.getElementById('cs-sem').value;
+  const facId  = parseInt(document.getElementById('cs-fac').value) || null;
+
+  if (!subjId || !name || !sy) {
+    toast('Please fill in all required fields.', 'error'); return;
+  }
+  try {
+    await api.createSection({ subject_id: subjId, faculty_id: facId, section_name: name, sy, sem });
+    toast('Section created.', 'success');
+    closeModal();
+    renderChairAssign();
+  } catch (err) { apiErr(err); }
+}
+
+/* ── Reassign Faculty Modal ──────────── */
+function showReassignModal(secId, secName, currentFacId) {
+  const faculty = window._chairFaculty || [];
+  showModal(`Reassign Faculty — ${secName}`, `
+    <div class="field-wrap">
+      <label class="field-label">Faculty</label>
+      <select id="ra-fac" class="field-select">
+        <option value="">— Unassigned —</option>
+        ${faculty.map(f =>
+          `<option value="${f.id}" ${currentFacId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doReassign(${secId})">Save</button>
+  `);
+}
+
+async function doReassign(secId) {
+  const facId = parseInt(document.getElementById('ra-fac').value) || null;
+  try {
+    await api.assignFaculty({ section_id: secId, faculty_id: facId });
+    toast('Faculty reassigned.', 'success');
+    closeModal();
+    renderChairAssign();
+  } catch (err) { apiErr(err); }
+}
+
+/* ── Enroll Students Modal ───────────── */
+async function showEnrollModal(secId, secName) {
+  showModal(`Students — ${secName}`, `<div class="text-muted text-sm" style="padding:12px">Loading…</div>`);
+  try {
+    const [enrolled, allStudents] = await Promise.all([
+      api.getEnrollments({ section_id: secId }),
+      api.getStudents(),
+    ]);
+    const enrolledIds = enrolled.map(e => e.student_id);
+
+    document.getElementById('modal-body').innerHTML = allStudents.length === 0
+      ? `<div class="text-muted text-sm">No students in your department.</div>`
+      : `<div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Name</th><th>Year</th><th>Enrolled</th></tr></thead>
+          <tbody>
+            ${allStudents.map(s => `<tr>
+              <td class="mono text-sm">${esc(s.id)}</td>
+              <td>${esc(s.name)}</td>
+              <td>Year ${s.year_level}</td>
+              <td>
+                <input type="checkbox"
+                  ${enrolledIds.includes(s.id) ? 'checked' : ''}
+                  onchange="toggleEnroll('${s.id}', ${secId}, this.checked)" />
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`;
+  } catch (err) { apiErr(err); }
+}
+
+async function toggleEnroll(studentId, sectionId, enroll) {
+  try {
+    await api.toggleEnrollment({ student_id: studentId, section_id: sectionId, enroll });
+  } catch (err) {
+    apiErr(err);
+  }
+}
+
+/* ══════════════════════════════════════════
+   FAILING STUDENTS
+══════════════════════════════════════════ */
+async function renderChairFailing() {
+  set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
+  try {
+    // Get all submitted sections first, then their grades
+    const sections = await api.getSections({ submitted: 1 });
+
+    if (sections.length === 0) {
+      set(`<div class="page-header"><div class="page-title">Failing Students</div></div>
+           <div class="empty"><div class="empty-icon">✅</div><div class="empty-text">No submitted grades yet in your department.</div></div>`);
+      return;
+    }
+
+    // Fetch grades for each submitted section
+    const gradePromises = sections.map(s => api.getGrades({ section_id: s.id }));
+    const gradeArrays   = await Promise.all(gradePromises);
+    const allGrades     = gradeArrays.flat();
+
+    // Find failing
+    const failMap = {};
+    allGrades
+      .filter(g => g.grade !== 'INC' && parseFloat(g.grade) > 3)
+      .forEach(g => {
+        if (!failMap[g.student_id]) {
+          failMap[g.student_id] = {
+            name:     g.student_name,
+            year:     g.year_level,
+            subjects: [],
+          };
+        }
+        failMap[g.student_id].subjects.push(g.subject_code || g.subject_name);
+      });
+
+    const failing = Object.entries(failMap).map(([id, v]) => ({ id, ...v }));
+
+    // Group by year level
+    const byYear = {};
+    failing.forEach(f => {
+      const yr = f.year || '—';
+      if (!byYear[yr]) byYear[yr] = [];
+      byYear[yr].push(f);
+    });
+
+    set(`
+      <div class="page-header">
+        <div>
+          <div class="page-title">Failing Students</div>
+          <div class="page-sub">Based on submitted grades in your department</div>
+        </div>
+      </div>
+
+      ${failing.length === 0
+        ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">No failing students in your department.</div></div>`
+        : Object.keys(byYear).sort().map(yr => `
+            <div class="year-block">
+              <div class="year-block-title">Year ${yr}</div>
+              <div class="section-card">
+                <div class="table-wrap"><table>
+                  <thead><tr><th>Student ID</th><th>Name</th><th>Failed Subjects</th><th>Subjects</th></tr></thead>
+                  <tbody>
+                    ${byYear[yr].map(f => `<tr class="row-fail">
+                      <td class="mono text-sm">${esc(f.id)}</td>
+                      <td>
+                        <div class="flex gap-8">
+                          <div class="avatar avatar-sm">${initials(f.name)}</div>
+                          ${esc(f.name)}
+                        </div>
+                      </td>
+                      <td><span class="badge badge-danger">${f.subjects.length} subject${f.subjects.length > 1 ? 's' : ''}</span></td>
+                      <td class="text-sm text-muted">${esc(f.subjects.join(', '))}</td>
+                    </tr>`).join('')}
+                  </tbody>
+                </table></div>
+              </div>
+            </div>
+          `).join('')}
+    `);
+  } catch (err) { apiErr(err); }
+}
