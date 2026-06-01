@@ -5,7 +5,7 @@
    Token-based auth via X-Auth-Token header
 ══════════════════════════════════════════ */
 
-const API_BASE = `${window.location.origin}/IPT2_Frontend/sarm/backend/api`;
+const API_BASE = `${window.location.origin}/repos/IPT2_Frontend/sarm/backend/api`;
 
 // Global current user
 let currentUser = null;
@@ -79,6 +79,9 @@ const api = {
   getStudents:   (params = {}) => apiFetch('students/get.php?'    + new URLSearchParams(params)),
   createStudent: (data)        => apiFetch('students/create.php',  { method:'POST', body: JSON.stringify(data) }),
   updateStudent: (data)        => apiFetch('students/update.php',  { method:'POST', body: JSON.stringify(data) }),
+
+  /* ── Colleges & Departments ────────── */
+  getColleges: () => apiFetch('colleges/get.php'),
 
   /* ── Subjects ──────────────────────── */
   getSubjects: (params = {}) => apiFetch('subjects/get.php?' + new URLSearchParams(params)),

@@ -45,17 +45,9 @@ function guard(string ...$roles): array {
         fail('Unauthenticated. No token provided.', 401);
     }
 
-    // Use absolute path so __DIR__ inside function doesn't break
     $dbPath = dirname(__DIR__) . '/config/db.php';
     require_once $dbPath;
     $db = getDB();
-
-    // Ensure table exists
-    $db->exec("CREATE TABLE IF NOT EXISTS auth_tokens (
-        token      VARCHAR(64) PRIMARY KEY,
-        user_json  TEXT        NOT NULL,
-        created_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB");
 
     $stmt = $db->prepare("SELECT user_json FROM auth_tokens WHERE token = ? LIMIT 1");
     $stmt->execute([$token]);
@@ -71,7 +63,7 @@ function guard(string ...$roles): array {
     }
 
     if (!empty($roles) && !in_array($user['role'], $roles, true)) {
-        fail('Forbidden. Your role (' . ($user['role'] ?? 'unknown') . ') cannot access this resource.', 403);
+        fail('Forbidden. Your role (' . ($user['role'] ?? 'unknown') . ') cannot access this.', 403);
     }
 
     return $user;
