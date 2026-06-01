@@ -5,7 +5,7 @@
    Token-based auth via X-Auth-Token header
 ══════════════════════════════════════════ */
 
-const API_BASE = `${window.location.origin}/repos/ipt2_project/sarm/backend/api`;
+const API_BASE = `${window.location.origin}/IPT2_Frontend/sarm/backend/api`;
 
 // Global current user
 let currentUser = null;
