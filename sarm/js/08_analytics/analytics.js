@@ -9,10 +9,10 @@ registerPage('reg-analytics',   () => renderAnalytics());
 registerPage('dean-analytics',  () => renderAnalytics());
 registerPage('chair-analytics', () => renderAnalytics());
 
-let _aFilter = { college_id: '', dept_id: '' };
+let _aFilter = { college_id: '', dept_id: '', sy: '', sem: '' };
 
 function renderAnalytics() {
-  _aFilter = { college_id: '', dept_id: '' };
+  _aFilter = { college_id: '', dept_id: '', sy: '', sem: '' };
   _drawAnalytics();
 }
 
@@ -22,6 +22,8 @@ async function _drawAnalytics() {
     const params = {};
     if (_aFilter.college_id) params.college_id = _aFilter.college_id;
     if (_aFilter.dept_id)    params.dept_id    = _aFilter.dept_id;
+    if (_aFilter.sy)         params.sy         = _aFilter.sy;
+    if (_aFilter.sem)        params.sem        = _aFilter.sem;
 
     const data = await api.getAnalytics(params);
     const { semester_trend: trend, dept_comparison: depts, grade_distribution: dist } = data;
@@ -30,6 +32,16 @@ async function _drawAnalytics() {
 
     // Build filter bar
     let filtersHtml = '';
+    const semesters = [...new Map(trend.map(t => [`${t.sy}||${t.sem}`, { sy: t.sy, sem: t.sem, label: t.label }]))].map(([_, v]) => v);
+    const semesterSelect = `
+      <div class="field-wrap" style="margin:0;min-width:220px">
+        <label class="field-label">Semester</label>
+        <select class="field-select" onchange="setAnFilter('semester',this.value)">
+          <option value="">All Semesters</option>
+          ${semesters.map(s => `<option value="${s.sy}||${s.sem}" ${_aFilter.sy===s.sy && _aFilter.sem===s.sem ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}
+        </select>
+      </div>`;
+
     if (role === 'Registrar') {
       // Get unique colleges from dept_comparison
       const colMap = {};
@@ -53,6 +65,7 @@ async function _drawAnalytics() {
 
       filtersHtml = `
         <div class="flex gap-12 flex-wrap mb-20" style="align-items:flex-end">
+          ${semesterSelect}
           <div class="field-wrap" style="margin:0;min-width:180px">
             <label class="field-label">College</label>
             <select class="field-select" onchange="setAnFilter('college_id',this.value)">
@@ -76,6 +89,7 @@ async function _drawAnalytics() {
       const deptList = Object.entries(deptSet).map(([id, name]) => ({ id: parseInt(id), name }));
       filtersHtml = `
         <div class="flex gap-12 flex-wrap mb-20" style="align-items:flex-end">
+          ${semesterSelect}
           <div class="field-wrap" style="margin:0;min-width:200px">
             <label class="field-label">Department</label>
             <select class="field-select" onchange="setAnFilter('dept_id',this.value)">
@@ -83,6 +97,14 @@ async function _drawAnalytics() {
               ${deptList.map(d => `<option value="${d.id}" ${_aFilter.dept_id==d.id?'selected':''}>${esc(d.name)}</option>`).join('')}
             </select>
           </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearAnFilter()">✕ Clear</button>
+        </div>`;
+    }
+
+    if (!filtersHtml) {
+      filtersHtml = `
+        <div class="flex gap-12 flex-wrap mb-20" style="align-items:flex-end">
+          ${semesterSelect}
           <button class="btn btn-ghost btn-sm" onclick="clearAnFilter()">✕ Clear</button>
         </div>`;
     }
@@ -256,11 +278,24 @@ function _gradeDistributionHtml(dist) {
 }
 
 function setAnFilter(key, val) {
-  _aFilter[key] = val;
-  if (key === 'college_id') _aFilter.dept_id = '';
+  if (key === 'college_id') {
+    _aFilter.college_id = val;
+    _aFilter.dept_id = '';
+  } else if (key === 'semester') {
+    if (val) {
+      const [sy, sem] = val.split('||');
+      _aFilter.sy = sy || '';
+      _aFilter.sem = sem || '';
+    } else {
+      _aFilter.sy = '';
+      _aFilter.sem = '';
+    }
+  } else {
+    _aFilter[key] = val;
+  }
   _drawAnalytics();
 }
 function clearAnFilter() {
-  _aFilter = { college_id: '', dept_id: '' };
+  _aFilter = { college_id: '', dept_id: '', sy: '', sem: '' };
   _drawAnalytics();
 }
