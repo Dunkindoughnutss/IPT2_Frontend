@@ -38,13 +38,28 @@ if (!empty($_GET['dept_id'])) {
     $scopeParams[] = (int)$_GET['dept_id'];
 }
 
+$semesterWhere  = [];
+$semesterParams = [];
+if (!empty($_GET['sy']) && !empty($_GET['sem'])) {
+    $allowedSemesters = ['1st','2nd','Summer'];
+    $sem = trim($_GET['sem']);
+    if (!in_array($sem, $allowedSemesters, true)) {
+        fail('Invalid semester value.');
+    }
+    $semesterWhere[]  = 'sec.sy = ?';
+    $semesterParams[] = trim($_GET['sy']);
+    $semesterWhere[]  = 'sec.sem = ?';
+    $semesterParams[] = $sem;
+}
+
 $baseJoin  = "FROM grades g
                JOIN sections sec ON sec.id = g.section_id
                JOIN subjects sub ON sub.id = sec.subject_id
                JOIN departments d ON d.id  = sub.dept_id
               WHERE sec.submitted = 1
                 AND g.grade != 'INC'"
-           . ($scopeWhere ? ' AND ' . implode(' AND ', $scopeWhere) : '');
+           . ($scopeWhere ? ' AND ' . implode(' AND ', $scopeWhere) : '')
+           . ($semesterWhere ? ' AND ' . implode(' AND ', $semesterWhere) : '');
 
 // ── 1. Semester Trend ─────────────────────
 $trendSql = "SELECT sec.sy, sec.sem,
@@ -58,7 +73,7 @@ $trendSql = "SELECT sec.sy, sec.sem,
                       FIELD(sec.sem,'1st','2nd','Summer')";
 
 $tStmt = $db->prepare($trendSql);
-$tStmt->execute($scopeParams);
+$tStmt->execute(array_merge($scopeParams, $semesterParams));
 $trendRaw = $tStmt->fetchAll();
 
 $semesterTrend = [];
@@ -128,13 +143,14 @@ $deptSql = "SELECT d.id, d.name AS dept_name, c.name AS college_name,
               FROM departments d
               JOIN colleges c   ON c.id   = d.college_id
               LEFT JOIN subjects sub ON sub.dept_id = d.id
-              LEFT JOIN sections sec ON sec.subject_id = sub.id AND sec.submitted = 1
-              LEFT JOIN grades g    ON g.section_id = sec.id AND g.grade != 'INC'"
+              LEFT JOIN sections sec ON sec.subject_id = sub.id AND sec.submitted = 1"
+          . ($semesterWhere ? ' AND sec.sy = ? AND sec.sem = ?' : '')
+          . "\n              LEFT JOIN grades g    ON g.section_id = sec.id AND g.grade != 'INC'"
           . ($deptWhere ? ' WHERE ' . implode(' AND ', $deptWhere) : '')
           . ' GROUP BY d.id ORDER BY d.name';
 
 $dStmt = $db->prepare($deptSql);
-$dStmt->execute($deptParams);
+$dStmt->execute(array_merge($deptParams, $semesterParams));
 $deptRaw = $dStmt->fetchAll();
 
 $deptComparison = [];
@@ -148,9 +164,14 @@ foreach ($deptRaw as $r) {
                  FROM enrollments e
                  JOIN sections sec ON sec.id = e.section_id
                  JOIN subjects sub ON sub.id = sec.subject_id
-                WHERE sub.dept_id = ? AND sec.submitted = 1";
+                WHERE sub.dept_id = ? AND sec.submitted = 1"
+             . ($semesterWhere ? ' AND sec.sy = ? AND sec.sem = ?' : '');
     $hcStmt2 = $db->prepare($hcSql2);
-    $hcStmt2->execute([$r['id']]);
+    $hcParams2 = [$r['id']];
+    if ($semesterWhere) {
+        $hcParams2 = array_merge($hcParams2, $semesterParams);
+    }
+    $hcStmt2->execute($hcParams2);
     $headcount = (int)($hcStmt2->fetch()['cnt'] ?? 0);
 
     $deptComparison[] = [
@@ -180,10 +201,11 @@ $distSql = "SELECT
              JOIN subjects sub ON sub.id = sec.subject_id
              JOIN departments d ON d.id  = sub.dept_id
             WHERE sec.submitted = 1"
-          . ($scopeWhere ? ' AND ' . implode(' AND ', $scopeWhere) : '');
+          . ($scopeWhere ? ' AND ' . implode(' AND ', $scopeWhere) : '')
+          . ($semesterWhere ? ' AND ' . implode(' AND ', $semesterWhere) : '');
 
 $distStmt = $db->prepare($distSql);
-$distStmt->execute($scopeParams);
+$distStmt->execute(array_merge($scopeParams, $semesterParams));
 $dist = $distStmt->fetch();
 
 $gradeDistribution = [
