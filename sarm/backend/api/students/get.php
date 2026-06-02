@@ -26,9 +26,17 @@ if ($me['role'] === 'Chairman' || $me['role'] === 'Faculty') {
 }
 
 // Optional extra filter
+if (!empty($_GET['college_id'])) {
+    $where[]  = 'c.id = ?';
+    $params[] = (int)$_GET['college_id'];
+}
 if (!empty($_GET['dept_id'])) {
     $where[]  = 's.dept_id = ?';
     $params[] = (int)$_GET['dept_id'];
+}
+if (!empty($_GET['year_level'])) {
+    $where[]  = 's.year_level = ?';
+    $params[] = (int)$_GET['year_level'];
 }
 
 //Process the frontend search parameter
@@ -46,8 +54,7 @@ $sql = "SELECT s.id, s.name, s.dept_id, s.year_level, s.status,
           JOIN departments d ON d.id = s.dept_id
           JOIN colleges    c ON c.id = d.college_id"
      . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
-     . ' ORDER BY s.id ASC'
-     . ' LIMIT 20'; //Cap the output results to 20 maximum
+     . ' ORDER BY s.id ASC';
 
 $rows = $db->prepare($sql);
 $rows->execute($params);
