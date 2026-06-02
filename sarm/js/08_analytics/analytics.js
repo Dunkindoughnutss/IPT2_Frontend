@@ -26,13 +26,12 @@ async function _drawAnalytics() {
     if (_aFilter.sem)        params.sem        = _aFilter.sem;
 
     const data = await api.getAnalytics(params);
-    const { semester_trend: trend, dept_comparison: depts, grade_distribution: dist, student_pass_rate: studentPassRate } = data;
+    const { semester_trend: trend, dept_comparison: depts, grade_distribution: dist, student_pass_rate: studentPassRateRaw } = data;
+    const studentPassRate = toNum(studentPassRateRaw);
     
     // Display student-level pass rate from backend calculation
     // Overall student pass rate = (students with no failing grades / total students) * 100
-    const studentPassRateLabel = Number.isFinite(studentPassRate)
-      ? `${studentPassRate}%`
-      : '—';
+    const studentPassRateLabel = percentLabel(studentPassRate);
 
     const role = currentUser.role;
 
@@ -146,7 +145,7 @@ async function _drawAnalytics() {
                     <td style="color:var(--success)">${t.passed}</td>
                     <td style="color:var(--danger)">${t.failed}</td>
                     <td>${prCell(t.pass_rate)}</td>
-                    <td class="mono text-sm">${t.avg_grade ? fmt2(t.avg_grade) : '—'}</td>
+                    <td class="mono text-sm">${avgLabel(t.avg_grade)}</td>
                   </tr>`).join('')}
                 </tbody>
               </table>
@@ -226,7 +225,7 @@ async function _drawAnalytics() {
                       <td style="color:var(--success)">${d.passed}</td>
                       <td style="color:var(--danger)">${d.failed}</td>
                       <td>${prCell(d.pass_rate)}</td>
-                      <td class="mono text-sm">${d.avg_grade ? fmt2(d.avg_grade) : '—'}</td>
+                      <td class="mono text-sm">${avgLabel(d.avg_grade)}</td>
                     </tr>`).join('')}
                   </tbody>
                 </table>

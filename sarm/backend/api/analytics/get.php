@@ -193,6 +193,7 @@ $distSql = "SELECT
               SUM(CASE WHEN g.grade != 'INC' AND g.grade > 1.5 AND g.grade <= 2.0 THEN 1 ELSE 0 END) AS good,
               SUM(CASE WHEN g.grade != 'INC' AND g.grade > 2.0 AND g.grade <= 2.5 THEN 1 ELSE 0 END) AS satisfactory,
               SUM(CASE WHEN g.grade != 'INC' AND g.grade > 2.5 AND g.grade <= 3.0 THEN 1 ELSE 0 END) AS passing,
+              SUM(CASE WHEN g.grade != 'INC' AND g.grade <= 3.0                   THEN 1 ELSE 0 END) AS passed,
               SUM(CASE WHEN g.grade != 'INC' AND g.grade > 3.0                   THEN 1 ELSE 0 END) AS failed,
               SUM(CASE WHEN g.grade  = 'INC'                                      THEN 1 ELSE 0 END) AS incomplete,
               COUNT(*) AS grand_total
@@ -243,6 +244,7 @@ $gradeDistribution = [
     'good'         => (int)$dist['good'],
     'satisfactory' => (int)$dist['satisfactory'],
     'passing'      => (int)$dist['passing'],
+    'passed'       => (int)$dist['passed'],
     'failed'       => (int)$dist['failed'],
     'incomplete'   => (int)$dist['incomplete'],
     'grand_total'  => (int)$dist['grand_total'],

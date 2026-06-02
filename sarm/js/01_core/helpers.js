@@ -14,6 +14,17 @@ function initials(n) {
   return (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 }
 function fmt2(g) { return parseFloat(g).toFixed(2); }
+function toNum(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+function percentLabel(v) { return Number.isFinite(v) ? `${Math.round(v)}%` : '—'; }
+function safePassRate(passed, total) {
+  const p = toNum(passed);
+  const t = toNum(total);
+  return t > 0 && Number.isFinite(p) ? Math.round(p / t * 100) : null;
+}
+function avgLabel(v) {
+  const n = toNum(v);
+  return n !== null ? fmt2(n) : '—';
+}
 
 /* ── Grade helpers ───────────────────── */
 function gradeDesc(g) {
