@@ -208,6 +208,36 @@ $distStmt = $db->prepare($distSql);
 $distStmt->execute(array_merge($scopeParams, $semesterParams));
 $dist = $distStmt->fetch();
 
+// Calculate overall student pass rate:
+// - total_students = number of distinct students with submitted grades in scope
+// - passed_students = students with zero failing grades (>3) among their submitted grades
+// - student_pass_rate = passed_students / total_students * 100
+$studentSql = "SELECT
+                    COUNT(*) AS total_students,
+                    SUM(CASE WHEN fail_count = 0 THEN 1 ELSE 0 END) AS passed_students
+                  FROM (
+                    SELECT g.student_id,
+                           SUM(CASE WHEN g.grade != 'INC' AND g.grade > 3 THEN 1 ELSE 0 END) AS fail_count
+                      FROM grades g
+                      JOIN sections sec ON sec.id = g.section_id
+                      JOIN subjects sub ON sub.id = sec.subject_id
+                      JOIN departments d ON d.id = sub.dept_id
+                     WHERE sec.submitted = 1"
+                . ($scopeWhere ? ' AND ' . implode(' AND ', $scopeWhere) : '')
+                . ($semesterWhere ? ' AND ' . implode(' AND ', $semesterWhere) : '')
+                . "
+                     GROUP BY g.student_id
+                  ) AS student_stats";
+
+$sStmt = $db->prepare($studentSql);
+$sStmt->execute(array_merge($scopeParams, $semesterParams));
+$studentData = $sStmt->fetch();
+
+$studentTotal = (int)($studentData['total_students'] ?? 0);
+$studentPassed = (int)($studentData['passed_students'] ?? 0);
+// pass rate formula: (passed_students / total_students) * 100
+$studentPassRate = $studentTotal ? round($studentPassed / $studentTotal * 100) : null;
+
 $gradeDistribution = [
     'excellent'    => (int)$dist['excellent'],
     'good'         => (int)$dist['good'],
@@ -220,7 +250,10 @@ $gradeDistribution = [
 
 // ── Return all ────────────────────────────
 ok([
-    'semester_trend'     => $semesterTrend,
-    'dept_comparison'    => $deptComparison,
-    'grade_distribution' => $gradeDistribution,
+    'semester_trend'      => $semesterTrend,
+    'dept_comparison'     => $deptComparison,
+    'grade_distribution'  => $gradeDistribution,
+    'student_total'       => $studentTotal,
+    'student_passed'      => $studentPassed,
+    'student_pass_rate'   => $studentPassRate,
 ]);

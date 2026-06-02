@@ -4,14 +4,108 @@
    REGISTRAR — Accounts, Assignment, Performance (API)
 ══════════════════════════════════════════ */
 
-registerPage('reg-accounts', renderRegAccounts);
-registerPage('reg-assign',   renderRegAssign);
-registerPage('reg-perf',     renderRegPerf);
+registerPage('reg-accounts',        renderRegAccounts);
+registerPage('reg-assign',          renderRegAssign);
+registerPage('reg-student-records', renderRegStudentRecords);
+registerPage('reg-perf',            renderRegPerf);
+
+let _regStudentRecordFilters = { college_id:'', dept_id:'', year_level:'', search:'' };
+let _regStudentRecordMeta = { colleges: [], departments: [] };
 
 /* ══════════════════════════════════════════
    ACCOUNT MANAGEMENT
 ══════════════════════════════════════════ */
 
+
+async function renderRegStudentRecords() {
+  set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
+  try {
+    const [meta, students] = await Promise.all([
+      api.getColleges().catch(() => ({ colleges: [], departments: [] })),
+      api.getStudents({
+        college_id: _regStudentRecordFilters.college_id,
+        dept_id: _regStudentRecordFilters.dept_id,
+        year_level: _regStudentRecordFilters.year_level,
+        search: _regStudentRecordFilters.search,
+      }),
+    ]);
+    _regStudentRecordMeta = meta;
+    _drawRegStudentRecords(meta, students);
+  } catch (err) { apiErr(err); }
+}
+
+function _drawRegStudentRecords(meta, students) {
+  const colleges = meta.colleges || [];
+  const departments = meta.departments || [];
+  const selectedCollege = parseInt(_regStudentRecordFilters.college_id) || null;
+  const filteredDepts = departments.filter(d => !selectedCollege || d.college_id === selectedCollege);
+
+  set(`
+    <div class="page-header">
+      <div>
+        <div class="page-title">Student Records</div>
+        <div class="page-sub">View all students filtered by college, course, year level, or search.</div>
+      </div>
+    </div>
+
+    <div class="section-card mb-20">
+      <div class="grid-4 gap-12" style="align-items:flex-end;">
+        <div class="field-wrap">
+          <label class="field-label">College</label>
+          <select id="rr-college" class="field-select" onchange="setRegStudentRecordFilter('college_id', this.value)">
+            <option value="">— All Colleges —</option>
+            ${colleges.map(c => `<option value="${c.id}" ${selectedCollege === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Course</label>
+          <select id="rr-dept" class="field-select" onchange="setRegStudentRecordFilter('dept_id', this.value)">
+            <option value="">— All Courses —</option>
+            ${filteredDepts.map(d => `<option value="${d.id}" ${_regStudentRecordFilters.dept_id == d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Year Level</label>
+          <select id="rr-year" class="field-select" onchange="setRegStudentRecordFilter('year_level', this.value)">
+            <option value="">— All Years —</option>
+            ${[1,2,3,4].map(y => `<option value="${y}" ${_regStudentRecordFilters.year_level == y ? 'selected' : ''}>Year ${y}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-wrap">
+          <label class="field-label">Search</label>
+          <input id="rr-search" class="field-input" placeholder="Search by name or ID" value="${esc(_regStudentRecordFilters.search)}" oninput="setRegStudentRecordFilter('search', this.value)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-card-head"><div class="fw-7">Student Records (${students.length})</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Student ID</th><th>Name</th><th>College</th><th>Course</th><th>Year</th><th>Status</th></tr></thead>
+        <tbody>
+          ${students.length === 0
+            ? `<tr><td colspan="6" class="table-empty">No matching student records.</td></tr>`
+            : students.map(s => `<tr>
+                <td class="mono text-sm fw-6">${esc(s.id)}</td>
+                <td><div class="flex gap-8"><div class="avatar avatar-sm">${initials(s.name)}</div>${esc(s.name)}</div></td>
+                <td class="text-sm text-muted">${esc(s.college_name || '—')}</td>
+                <td class="text-sm text-muted">${esc(s.dept_name || '—')}</td>
+                <td>Year ${esc(s.year_level)}</td>
+                <td><span class="badge badge-${s.status === 'enrolled' ? 'success' : 'muted'}">${esc(s.status)}</span></td>
+              </tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>
+  `);
+}
+
+function setRegStudentRecordFilter(field, value) {
+  _regStudentRecordFilters[field] = value || '';
+  if (field === 'college_id') {
+    _regStudentRecordFilters.dept_id = '';
+  }
+  renderRegStudentRecords();
+}
 
 async function renderRegAccounts() {
   set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);

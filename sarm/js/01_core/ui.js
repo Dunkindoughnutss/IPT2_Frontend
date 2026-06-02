@@ -7,11 +7,12 @@
 const NAV = [
   { key:'dashboard',     label:'Dashboard',            icon:'⬡', roles:['Registrar','Dean','Chairman','Faculty'] },
   // Registrar
-  { key:'reg-accounts',  label:'Account Management',   icon:'◈', roles:['Registrar'] },
-  { key:'reg-assign',    label:'Dean & Chair Assign',  icon:'◇', roles:['Registrar'] },
-  { key:'reg-perf',      label:'Academic Performance', icon:'◎', roles:['Registrar'] },
-  { key:'reg-analytics', label:'Data Analytics',       icon:'▣', roles:['Registrar'] },
-  { key:'reg-archives',  label:'Graduate Archives',    icon:'◫', roles:['Registrar'] },
+  { key:'reg-accounts',        label:'Account Management',   icon:'◈', roles:['Registrar'] },
+  { key:'reg-assign',          label:'Dean & Chair Assign',  icon:'◇', roles:['Registrar'] },
+  { key:'reg-student-records', label:'Student Records',      icon:'📚', roles:['Registrar'] },
+  { key:'reg-perf',            label:'Academic Performance', icon:'◎', roles:['Registrar'] },
+  { key:'reg-analytics',       label:'Data Analytics',       icon:'▣', roles:['Registrar'] },
+  { key:'reg-archives',        label:'Graduate Archives',    icon:'◫', roles:['Registrar'] },
   // Dean
   { key:'dean-perf',      label:'Academic Performance',icon:'◎', roles:['Dean'] },
   { key:'dean-analytics', label:'Data Analytics',      icon:'▣', roles:['Dean'] },
@@ -57,7 +58,7 @@ function buildNav() {
   // Group analytics/archives under a label
   const sections = [
     { label: null,          keys: ['dashboard','fac-encode','stu-grades'] },
-    { label: 'MANAGEMENT',  keys: ['reg-accounts','reg-assign','chair-assign','chair-failing'] },
+    { label: 'MANAGEMENT',  keys: ['reg-accounts','reg-assign','reg-student-records','chair-assign','chair-failing'] },
     { label: 'PERFORMANCE', keys: ['reg-perf','dean-perf'] },
     { label: 'ANALYTICS',   keys: ['reg-analytics','dean-analytics','chair-analytics'] },
     { label: 'ARCHIVES',    keys: ['reg-archives','dean-archives','chair-archives'] },

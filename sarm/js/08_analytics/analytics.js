@@ -26,7 +26,13 @@ async function _drawAnalytics() {
     if (_aFilter.sem)        params.sem        = _aFilter.sem;
 
     const data = await api.getAnalytics(params);
-    const { semester_trend: trend, dept_comparison: depts, grade_distribution: dist } = data;
+    const { semester_trend: trend, dept_comparison: depts, grade_distribution: dist, student_pass_rate: studentPassRate } = data;
+    
+    // Display student-level pass rate from backend calculation
+    // Overall student pass rate = (students with no failing grades / total students) * 100
+    const studentPassRateLabel = Number.isFinite(studentPassRate)
+      ? `${studentPassRate}%`
+      : '—';
 
     const role = currentUser.role;
 
@@ -115,7 +121,7 @@ async function _drawAnalytics() {
         ${statCard('📊','Total Grades',    dist.grand_total,  '#374151','#f3f4f6')}
         ${statCard('✅','Total Passed',     dist.passed  ?? 0, 'var(--success)','#dcfce7')}
         ${statCard('❌','Total Failed',      dist.failed  ?? 0, 'var(--danger)','#fee2e2')}
-        ${statCard('📈','Overall Pass Rate', dist.grand_total ? Math.round(dist.passed/dist.grand_total*100)+'%' : '—', 'var(--blue)','#dbeafe')}
+        ${statCard('🎓','Student Pass Rate', studentPassRateLabel, 'var(--blue)','#dbeafe')}
       </div>
 
       <!-- Row 1: Semester trend + Headcount -->
