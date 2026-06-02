@@ -98,7 +98,7 @@ async function _drawGradeTable() {
                      const failing = gNum !== null && gNum > 3;
                      return `<tr class="${failing ? 'row-fail' : ''}">
                        <td class="mono text-sm text-muted">${esc(e.student_id)}</td>
-                       <td><div class="flex gap-8"><div class="avatar avatar-sm">${initials(e.student_name)}</div>${esc(e.student_name)}</div></td>
+                       <td><div class="flex gap-8"><div class="avatar avatar-sm">${initials(e.student_name)}</div><button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(e.student_id)}" data-student-name="${esc(e.student_name)}" onclick="openStudentGrades(this)">${esc(e.student_name)}</button></div></td>
                        <td>Year ${e.year_level}</td>
                        <td>${sec.submitted
                          ? `<span class="${g ? gradeClass(g === 'INC' ? 'INC' : parseFloat(g)) : 'text-muted'}">${g || '—'}</span>`

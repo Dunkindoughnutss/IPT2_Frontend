@@ -33,6 +33,53 @@ function gradeClass(g) {
 }
 function isPassing(g) { return g!=='INC' && g<=3.0; }
 
+function openStudentGrades(el) {
+  const studentId   = el.dataset.studentId;
+  const studentName = el.dataset.studentName || studentId;
+  if (!studentId) return;
+  showStudentGradesModal(studentId, studentName);
+}
+
+async function showStudentGradesModal(studentId, studentName) {
+  showModal(`Grades — ${esc(studentName)}`, `<div class="text-muted text-sm" style="padding:12px">Loading grades…</div>`);
+  try {
+    const grades = await api.getGrades({ student_id: studentId });
+    if (!grades.length) {
+      document.getElementById('modal-body').innerHTML = `<div class="text-muted text-sm">No grades found for ${esc(studentName)}.</div>`;
+      return;
+    }
+
+    document.getElementById('modal-body').innerHTML = `
+      <div class="section-card">
+        <div class="section-card-body">
+          <div class="text-sm text-muted mb-16">Student ID: <span class="mono">${esc(studentId)}</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr>
+              <th>Subject</th><th>Section</th><th>SY</th><th>Sem</th><th>Grade</th><th>Description</th><th>Faculty</th>
+            </tr></thead>
+            <tbody>
+              ${grades.map(g => {
+                const gNum = g.grade === 'INC' ? null : parseFloat(g.grade);
+                return `<tr>
+                  <td><span class="chip">${esc(g.subject_code)}</span> ${esc(g.subject_name)}</td>
+                  <td>${esc(g.section_name)}</td>
+                  <td class="text-sm text-muted">${esc(g.sy)}</td>
+                  <td class="text-sm text-muted">${esc(g.sem)}</td>
+                  <td><span class="${gradeClass(g.grade === 'INC' ? 'INC' : gNum)}">${g.grade === 'INC' ? 'INC' : fmt2(gNum)}</span></td>
+                  <td class="text-sm text-muted">${esc(gradeDesc(g.grade === 'INC' ? 'INC' : gNum))}</td>
+                  <td class="text-sm text-muted">${esc(g.faculty_name || '—')}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table></div>
+        </div>
+      </div>`;
+  } catch (err) {
+    apiErr(err, 'Unable to load student grades.');
+    document.getElementById('modal-body').innerHTML = `<div class="text-muted text-sm">Unable to load grades.</div>`;
+  }
+}
+
 /* ── Record lookups ──────────────────── */
 const getCollege = id => DB.colleges.find(c=>c.id===id);
 const getDept    = id => DB.departments.find(d=>d.id===id);

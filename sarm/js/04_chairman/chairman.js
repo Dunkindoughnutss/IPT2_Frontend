@@ -226,7 +226,7 @@ async function showEnrollModal(secId, secName) {
           <tbody>
             ${allStudents.map(s => `<tr>
               <td class="mono text-sm">${esc(s.id)}</td>
-              <td>${esc(s.name)}</td>
+              <td><button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(s.id)}" data-student-name="${esc(s.name)}" onclick="openStudentGrades(this)">${esc(s.name)}</button></td>
               <td>Year ${s.year_level}</td>
               <td>
                 <input type="checkbox"
@@ -314,7 +314,7 @@ async function renderChairFailing() {
                       <td>
                         <div class="flex gap-8">
                           <div class="avatar avatar-sm">${initials(f.name)}</div>
-                          ${esc(f.name)}
+                          <button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(f.id)}" data-student-name="${esc(f.name)}" onclick="openStudentGrades(this)">${esc(f.name)}</button>
                         </div>
                       </td>
                       <td><span class="badge badge-danger">${f.subjects.length} subject${f.subjects.length > 1 ? 's' : ''}</span></td>
