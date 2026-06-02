@@ -1,7 +1,7 @@
 <?php
 // ══════════════════════════════════════════
 // api/students/get.php   GET
-// Query params: dept_id (optional filter)
+// Query params: dept_id (optional filter), search (optional text query)
 // Auth: Registrar, Dean, Chairman, Faculty
 // ══════════════════════════════════════════
 
@@ -31,13 +31,23 @@ if (!empty($_GET['dept_id'])) {
     $params[] = (int)$_GET['dept_id'];
 }
 
+//Process the frontend search parameter
+if (!empty($_GET['search'])) {
+    // Allows searching by name OR student ID
+    $where[]  = '(s.name LIKE ? OR s.id LIKE ?)';
+    $searchTerm = '%' . trim($_GET['search']) . '%';
+    $params[] = $searchTerm;
+    $params[] = $searchTerm;
+}
+
 $sql = "SELECT s.id, s.name, s.dept_id, s.year_level, s.status,
                d.name AS dept_name, c.id AS college_id, c.name AS college_name
           FROM students s
           JOIN departments d ON d.id = s.dept_id
           JOIN colleges    c ON c.id = d.college_id"
      . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
-     . ' ORDER BY s.id';
+     . ' ORDER BY s.id ASC'
+     . ' LIMIT 20'; //Cap the output results to 20 maximum
 
 $rows = $db->prepare($sql);
 $rows->execute($params);
