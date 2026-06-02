@@ -11,6 +11,8 @@ registerPage('reg-perf',     renderRegPerf);
 /* ══════════════════════════════════════════
    ACCOUNT MANAGEMENT
 ══════════════════════════════════════════ */
+
+
 async function renderRegAccounts() {
   set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
   try {
@@ -52,17 +54,22 @@ function _drawRegAccounts(users, students) {
       </table></div>
     </div>
 
-    <div class="section-card">
-      <div class="section-card-head">
-        <div class="fw-7">Student Accounts (${students.length})</div>
-        <div class="text-xs text-muted">Login: Student ID + Birthday (mmddyyyy)</div>
+<div class="section-card">
+      <div class="section-card-head" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div class="fw-7">Student Accounts</div>
+        </div>
+        <div class="field-wrap" style="margin: 0; width: 220px;">
+          <input id="stu-search" class="field-input" placeholder="Search by name or ID..." 
+            oninput="filterStudentTable(this.value)" />
+        </div>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>Student ID</th><th>Name</th><th>Department</th><th>Year</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>
+        <tbody id="student-table-body">
           ${students.length === 0
             ? `<tr><td colspan="6" class="table-empty">No students yet.</td></tr>`
-            : students.map(s => `<tr>
+            : students.map(s => `<tr class="student-row" data-name="${esc(s.name).toLowerCase()}" data-id="${esc(s.id)}">
                 <td class="mono text-sm fw-6">${esc(s.id)}</td>
                 <td><div class="flex gap-8"><div class="avatar avatar-sm">${initials(s.name)}</div>${esc(s.name)}</div></td>
                 <td class="text-sm text-muted">${esc(s.dept_name || '—')}</td>
@@ -279,6 +286,23 @@ async function doCreateStudent() {
     closeModal();
     renderRegAccounts();
   } catch (err) { apiErr(err); }
+}
+/* ── Instant Student Name Search Filter ── */
+function filterStudentTable(query) {
+  const q = query.toLowerCase().trim();
+  const rows = document.querySelectorAll('#student-table-body .student-row');
+  
+  rows.forEach(row => {
+    const name = row.getAttribute('data-name');
+    const id = row.getAttribute('data-id');
+    
+    // Show row if query matches name or student ID, otherwise hide it
+    if (name.includes(q) || id.includes(q)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
 }
 
 /* ── Edit Student ────────────────────── */
