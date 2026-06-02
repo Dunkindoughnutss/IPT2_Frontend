@@ -40,11 +40,39 @@ async function renderChairAssign() {
     window._chairStudents = students;
     window._chairUsers    = users;
 
+    const failing = await getChairmanFailingStudents();
+    const failingHtml = `
+      <div class="section-card mb-20">
+        <div class="section-card-head">
+          <div class="fw-7">Failed Students</div>
+          <div class="text-xs text-muted">${failing.length} student${failing.length !== 1 ? 's' : ''}</div>
+        </div>
+        ${failing.length === 0
+          ? `<div class="section-card-body"><div class="empty"><div class="empty-icon">✅</div><div class="empty-text">No failed students in your department.</div></div></div>`
+          : `<div class="section-card-body">
+              <div class="table-wrap"><table>
+                <thead><tr><th>Student ID</th><th>Name</th><th>Failed Subjects</th></tr></thead>
+                <tbody>
+                  ${failing.map(f => `<tr class="row-fail">
+                    <td class="mono text-sm">${esc(f.id)}</td>
+                    <td>
+                      <button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(f.id)}" data-student-name="${esc(f.name)}" onclick="openStudentGrades(this)">${esc(f.name)}</button>
+                    </td>
+                    <td class="text-sm text-muted">${esc(f.subjects.join(', '))}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table></div>
+              <div class="mt-16"><button class="btn btn-sm btn-secondary" onclick="navigate('chair-failing')">View full failing report</button></div>
+            </div>`}
+      </div>`;
+
     set(`
       <div class="page-header">
         <div class="page-title">Subject Assignment</div>
         <button class="btn btn-primary" onclick="showCreateSectionModal()">+ Create Section</button>
       </div>
+
+      ${failingHtml}
 
       <!-- Subjects table -->
       <div class="section-card mb-20">
@@ -118,6 +146,30 @@ async function renderChairAssign() {
       </div>
     `);
   } catch (err) { apiErr(err); }
+}
+
+async function getChairmanFailingStudents() {
+  const sections = await api.getSections({ submitted: 1 });
+  if (!sections.length) return [];
+
+  const gradePromises = sections.map(s => api.getGrades({ section_id: s.id }));
+  const gradeArrays   = await Promise.all(gradePromises);
+  const allGrades     = gradeArrays.flat();
+
+  const failMap = {};
+  allGrades
+    .filter(g => g.grade !== 'INC' && parseFloat(g.grade) > 3)
+    .forEach(g => {
+      if (!failMap[g.student_id]) {
+        failMap[g.student_id] = {
+          name:     g.student_name,
+          subjects: [],
+        };
+      }
+      failMap[g.student_id].subjects.push(g.subject_code || g.subject_name);
+    });
+
+  return Object.entries(failMap).map(([id, v]) => ({ id, ...v }));
 }
 
 /* ── Create Section Modal ────────────── */

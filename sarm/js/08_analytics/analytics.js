@@ -43,25 +43,16 @@ async function _drawAnalytics() {
       </div>`;
 
     if (role === 'Registrar') {
-      // Get unique colleges from dept_comparison
-      const colMap = {};
-      depts.forEach(d => { colMap[d.dept_id] = d; }); // placeholder
-      // We'll use a separate graduates call to get college list
-      const grads = await api.getGraduates().catch(() => []);
-      const colSet = {}, depSet = {};
-      grads.forEach(g => {
-        colSet[g.college_id] = g.college_name;
-        if (!depSet[g.college_id]) depSet[g.college_id] = [];
-        if (!depSet[g.college_id].find(d => d.id === g.dept_id))
-          depSet[g.college_id].push({ id: g.dept_id, name: g.dept_name });
+      const meta = await api.getColleges().catch(() => ({ colleges: [], departments: [] }));
+      const colleges = meta.colleges || [];
+      const depSet = {};
+      (meta.departments || []).forEach(d => {
+        if (!depSet[d.college_id]) depSet[d.college_id] = [];
+        depSet[d.college_id].push({ id: d.id, name: d.name });
       });
-      const colleges = Object.entries(colSet).map(([id, name]) => ({ id: parseInt(id), name }));
       const filtDepts = _aFilter.college_id
         ? (depSet[parseInt(_aFilter.college_id)] || [])
         : Object.values(depSet).flat();
-
-      window._anColleges = colSet;
-      window._anDepts    = depSet;
 
       filtersHtml = `
         <div class="flex gap-12 flex-wrap mb-20" style="align-items:flex-end">
@@ -83,10 +74,10 @@ async function _drawAnalytics() {
           <button class="btn btn-ghost btn-sm" onclick="clearAnFilter()">✕ Clear</button>
         </div>`;
     } else if (role === 'Dean') {
-      const grads = await api.getGraduates().catch(() => []);
-      const deptSet = {};
-      grads.forEach(g => { deptSet[g.dept_id] = g.dept_name; });
-      const deptList = Object.entries(deptSet).map(([id, name]) => ({ id: parseInt(id), name }));
+      const meta = await api.getColleges().catch(() => ({ departments: [] }));
+      const deptList = (meta.departments || [])
+        .filter(d => d.college_id === currentUser.college_id)
+        .map(d => ({ id: d.id, name: d.name }));
       filtersHtml = `
         <div class="flex gap-12 flex-wrap mb-20" style="align-items:flex-end">
           ${semesterSelect}
