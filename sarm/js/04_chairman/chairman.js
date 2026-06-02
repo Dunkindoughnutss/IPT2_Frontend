@@ -1,6 +1,11 @@
 'use strict';
 
 /* ══════════════════════════════════════════
+   API EXTENSION (Self-Contained)
+══════════════════════════════════════════ */
+api.createSubject = (data) => apiFetch('subjects/create.php', { method: 'POST', body: JSON.stringify(data) });
+
+/* ══════════════════════════════════════════
    CHAIRMAN — Subject Assignment & Failing (API)
 ══════════════════════════════════════════ */
 
@@ -8,7 +13,7 @@ registerPage('chair-assign',  renderChairAssign);
 registerPage('chair-failing', renderChairFailing);
 
 /* ══════════════════════════════════════════
-   SUBJECT ASSIGNMENT
+   SUBJECT ASSIGNMENT & CURRICULUM MANAGEMENT
 ══════════════════════════════════════════ */
 async function renderChairAssign() {
   set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
@@ -21,11 +26,8 @@ async function renderChairAssign() {
       api.getUsers(),
     ]);
 
-    const faculty = users.filter(u =>
-      u.role === 'Faculty' &&
-      u.dept_id === currentUser.dept_id &&
-      u.active
-    );
+    // SOLUTION B: Include ALL active faculty university-wide for minor subjects
+    const faculty = users.filter(u => u.role === 'Faculty' && u.active);
 
     // Map sections onto subjects
     const subjectRows = subjects.map(subj => {
@@ -33,7 +35,7 @@ async function renderChairAssign() {
       return { ...subj, sections: subSecs };
     });
 
-    // Store for modal use
+    // Store references for modal utilization
     window._chairSubjects = subjects;
     window._chairSections = sections;
     window._chairFaculty  = faculty;
@@ -43,7 +45,10 @@ async function renderChairAssign() {
     set(`
       <div class="page-header">
         <div class="page-title">Subject Assignment</div>
-        <button class="btn btn-primary" onclick="showCreateSectionModal()">+ Create Section</button>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary" onclick="showCreateSubjectModal()">+ Create Subject</button>
+          <button class="btn btn-primary" onclick="showCreateSectionModal()">+ Create Section</button>
+        </div>
       </div>
 
       <!-- Subjects table -->
@@ -55,7 +60,7 @@ async function renderChairAssign() {
         ${subjects.length === 0
           ? `<div class="section-card-body"><div class="empty" style="padding:24px">
               <div class="empty-icon">📚</div>
-              <div class="empty-text">No subjects found for your department.<br>Contact the Registrar to add subjects.</div>
+              <div class="empty-text">No subjects found for your department.<br>Click "+ Create Subject" to add one.</div>
              </div></div>`
           : `<div class="table-wrap"><table>
               <thead><tr>
@@ -120,7 +125,73 @@ async function renderChairAssign() {
   } catch (err) { apiErr(err); }
 }
 
-/* ── Create Section Modal ────────────── */
+/* ── Create Subject Modal ────────────────────── */
+function showCreateSubjectModal() {
+  const deptLabel = currentUser.dept_name || `Department ID: ${currentUser.dept_id}`;
+
+  showModal('Create New Subject', `
+    <div class="field-wrap">
+      <label class="field-label">Subject Code</label>
+      <input id="sub-code" class="field-input" placeholder="e.g. IT-311" style="text-transform: uppercase;" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Subject Name</label>
+      <input id="sub-name" class="field-input" placeholder="e.g. Advanced Database Systems" />
+    </div>
+    <div class="grid-2">
+      <div class="field-wrap">
+        <label class="field-label">Units</label>
+        <input id="sub-units" type="number" class="field-input" min="1" max="5" value="3" />
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Department</label>
+        <input class="field-input" value="${esc(deptLabel)}" disabled style="background: var(--bg-muted); cursor: not-allowed;" />
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field-wrap">
+        <label class="field-label">Curriculum Year</label>
+        <select id="sub-year" class="field-select">
+          <option value="1">Year 1</option>
+          <option value="2">Year 2</option>
+          <option value="3">Year 3</option>
+          <option value="4">Year 4</option>
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Default Sem</label>
+        <select id="sub-sem" class="field-select">
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="Summer">Summer</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full mt-12" onclick="doCreateSubject()">Create Subject</button>
+  `);
+}
+
+/* ── Create Subject Submission Handler ────────── */
+async function doCreateSubject() {
+  const code  = document.getElementById('sub-code').value.trim().toUpperCase();
+  const name  = document.getElementById('sub-name').value.trim();
+  const units = parseInt(document.getElementById('sub-units').value);
+  const year  = parseInt(document.getElementById('sub-year').value);
+  const sem   = document.getElementById('sub-sem').value;
+
+  if (!code || !name || !units) {
+    toast('Please fill out all fields.', 'error'); return;
+  }
+
+  try {
+    await api.createSubject({ code, name, units, dept_id: currentUser.dept_id, year, sem });
+    toast('Subject added to curriculum.', 'success');
+    closeModal();
+    renderChairAssign();
+  } catch (err) { apiErr(err); }
+}
+
+/* ── Create Section Modal ────────────────────── */
 function showCreateSectionModal(preSubjId = null) {
   const subjects = window._chairSubjects || [];
   const faculty  = window._chairFaculty  || [];
@@ -157,7 +228,7 @@ function showCreateSectionModal(preSubjId = null) {
       <label class="field-label">Assign Faculty <span class="text-muted">(optional)</span></label>
       <select id="cs-fac" class="field-select">
         <option value="">— Unassigned —</option>
-        ${faculty.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('')}
+        ${faculty.map(f => `<option value="${f.id}">${esc(f.name)} ${f.dept_id !== currentUser.dept_id ? '(Minor / External)' : ''}</option>`).join('')}
       </select>
     </div>
     <button class="btn btn-primary btn-full" onclick="doCreateSection()">Create Section</button>
@@ -182,7 +253,7 @@ async function doCreateSection() {
   } catch (err) { apiErr(err); }
 }
 
-/* ── Reassign Faculty Modal ──────────── */
+/* ── Reassign Faculty Modal ──────────────────── */
 function showReassignModal(secId, secName, currentFacId) {
   const faculty = window._chairFaculty || [];
   showModal(`Reassign Faculty — ${secName}`, `
@@ -191,7 +262,7 @@ function showReassignModal(secId, secName, currentFacId) {
       <select id="ra-fac" class="field-select">
         <option value="">— Unassigned —</option>
         ${faculty.map(f =>
-          `<option value="${f.id}" ${currentFacId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`
+          `<option value="${f.id}" ${currentFacId === f.id ? 'selected' : ''}>${esc(f.name)} ${f.dept_id !== currentUser.dept_id ? '(Minor / External)' : ''}</option>`
         ).join('')}
       </select>
     </div>
@@ -209,7 +280,7 @@ async function doReassign(secId) {
   } catch (err) { apiErr(err); }
 }
 
-/* ── Enroll Students Modal ───────────── */
+/* ── Enroll Students Modal ───────────────────── */
 async function showEnrollModal(secId, secName) {
   showModal(`Students — ${secName}`, `<div class="text-muted text-sm" style="padding:12px">Loading…</div>`);
   try {
@@ -219,31 +290,48 @@ async function showEnrollModal(secId, secName) {
     ]);
     const enrolledIds = enrolled.map(e => e.student_id);
 
-    document.getElementById('modal-body').innerHTML = allStudents.length === 0
-      ? `<div class="text-muted text-sm">No students in your department.</div>`
-      : `<div class="table-wrap"><table>
-          <thead><tr><th>ID</th><th>Name</th><th>Year</th><th>Enrolled</th></tr></thead>
-          <tbody>
-            ${allStudents.map(s => `<tr>
-              <td class="mono text-sm">${esc(s.id)}</td>
-              <td><button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(s.id)}" data-student-name="${esc(s.name)}" onclick="openStudentGrades(this)">${esc(s.name)}</button></td>
-              <td>Year ${s.year_level}</td>
-              <td>
-                <input type="checkbox"
-                  ${enrolledIds.includes(s.id) ? 'checked' : ''}
-                  onchange="toggleEnroll('${s.id}', ${secId}, this.checked)" />
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div>`;
+    // Apply strict enrollment display parameters (department boundary & active indicators)
+    const deptStudents = allStudents
+      .filter(s => s.dept_id === currentUser.dept_id && s.active)
+      .sort((a, b) => (a.year_level || 0) - (b.year_level || 0));
+
+    document.getElementById('modal-body').innerHTML = deptStudents.length === 0
+      ? `<div class="text-muted text-sm" style="padding:12px">No active students found in your department roster.</div>`
+      : `<div class="alert alert-info mb-12" style="font-size:12px; padding:8px 12px">
+          Showing active department students. Changes save instantly.
+         </div>
+         <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Year</th><th>Enrolled</th></tr></thead>
+            <tbody>
+              ${deptStudents.map(s => `<tr>
+                <td class="mono text-sm">${esc(s.id)}</td>
+                <td>
+                  <button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(s.id)}" data-student-name="${esc(s.name)}" onclick="openStudentGrades(this)">
+                    ${esc(s.name)}
+                  </button>
+                </td>
+                <td><span class="badge badge-muted">Year ${s.year_level}</span></td>
+                <td>
+                  <input type="checkbox"
+                    ${enrolledIds.includes(s.id) ? 'checked' : ''}
+                    onchange="toggleEnroll('${s.id}', ${secId}, this)" />
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+         </div>`;
   } catch (err) { apiErr(err); }
 }
 
-async function toggleEnroll(studentId, sectionId, enroll) {
+async function toggleEnroll(studentId, sectionId, checkboxElement) {
+  const originalState = checkboxElement.checked;
   try {
-    await api.toggleEnrollment({ student_id: studentId, section_id: sectionId, enroll });
+    await api.toggleEnrollment({ student_id: studentId, section_id: sectionId, enroll: originalState });
   } catch (err) {
     apiErr(err);
+    // UI state auto-rollback on constraint execution failures
+    checkboxElement.checked = !originalState;
   }
 }
 
@@ -253,7 +341,6 @@ async function toggleEnroll(studentId, sectionId, enroll) {
 async function renderChairFailing() {
   set(`<div class="empty"><div class="empty-icon">⏳</div><div class="empty-text">Loading…</div></div>`);
   try {
-    // Get all submitted sections first, then their grades
     const sections = await api.getSections({ submitted: 1 });
 
     if (sections.length === 0) {
@@ -262,12 +349,10 @@ async function renderChairFailing() {
       return;
     }
 
-    // Fetch grades for each submitted section
     const gradePromises = sections.map(s => api.getGrades({ section_id: s.id }));
     const gradeArrays   = await Promise.all(gradePromises);
     const allGrades     = gradeArrays.flat();
 
-    // Find failing
     const failMap = {};
     allGrades
       .filter(g => g.grade !== 'INC' && parseFloat(g.grade) > 3)
@@ -284,7 +369,6 @@ async function renderChairFailing() {
 
     const failing = Object.entries(failMap).map(([id, v]) => ({ id, ...v }));
 
-    // Group by year level
     const byYear = {};
     failing.forEach(f => {
       const yr = f.year || '—';
