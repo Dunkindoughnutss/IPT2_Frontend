@@ -32,11 +32,12 @@ if (!empty($_GET['student_id'])) {
 if (empty($where)) fail('Provide section_id or student_id.');
 
 $sql = "SELECT e.id, e.student_id, e.section_id,
-               s.name AS student_name, s.year_level, s.dept_id
+               CONCAT(s.firstName, ' ', IF(s.middleName != '', CONCAT(s.middleName, ' '), ''), s.lastName) AS student_name,
+               s.year_level, s.dept_id
           FROM enrollments e
           JOIN students s ON s.id = e.student_id"
      . ' WHERE ' . implode(' AND ', $where)
-     . ' ORDER BY s.name';
+     . ' ORDER BY s.firstName, s.lastName';
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);

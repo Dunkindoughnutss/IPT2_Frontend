@@ -1,7 +1,7 @@
 <?php
 // ══════════════════════════════════════════
 // api/students/create.php   POST
-// Body: { id, name, dept_id, year_level, birthday }
+// Body: { id, firstName, middleName, lastName, dept_id, year_level, birthday }
 // Auth: Registrar
 // ══════════════════════════════════════════
 
@@ -13,13 +13,15 @@ guard('Registrar');
 
 $b          = body();
 $id         = trim($b['id']       ?? '');
-$name       = trim($b['name']     ?? '');
+$firstName  = trim($b['firstName']  ?? '');
+$middleName = trim($b['middleName'] ?? '');
+$lastName   = trim($b['lastName']   ?? '');
 $deptId     = (int)($b['dept_id']     ?? 0);
 $yearLevel  = (int)($b['year_level']  ?? 1);
 $birthday   = trim($b['birthday'] ?? '');
 
-if (!$id || !$name || !$deptId || !$birthday) {
-    fail('ID, name, department, and birthday are required.');
+if (!$id || !$firstName || !$lastName || !$deptId || !$birthday) {
+    fail('ID, firstName, lastName, department, and birthday are required.');
 }
 if (!preg_match('/^\d{6}$/', $id)) {
     fail('Student ID must be exactly 6 digits.');
@@ -35,8 +37,8 @@ $check->execute([$id]);
 if ($check->fetch()) fail('Student ID already exists.');
 
 $db->prepare(
-    'INSERT INTO students (id, name, dept_id, year_level, birthday, status)
-     VALUES (?, ?, ?, ?, ?, "enrolled")'
-)->execute([$id, $name, $deptId, $yearLevel, $birthday]);
+    'INSERT INTO students (id, firstName, middleName, lastName, dept_id, year_level, birthday, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, "enrolled")'
+)->execute([$id, $firstName, $middleName, $lastName, $deptId, $yearLevel, $birthday]);
 
 ok(['id' => $id], 'Student account created.');

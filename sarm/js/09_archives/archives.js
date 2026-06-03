@@ -290,10 +290,18 @@ async function showAddGraduateModal() {
         <label class="field-label">Student ID</label>
         <input id="ag-id" class="field-input" placeholder="e.g. 240001" />
       </div>
-      <div class="field-wrap">
-        <label class="field-label">Full Name</label>
-        <input id="ag-name" class="field-input" placeholder="Full name" />
-      </div>
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">First Name</label>
+      <input id="ag-fname" class="field-input" placeholder="First name" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Middle Name <span class="text-muted">(optional)</span></label>
+      <input id="ag-mname" class="field-input" placeholder="Middle name" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Last Name</label>
+      <input id="ag-lname" class="field-input" placeholder="Last name" />
     </div>
     <div class="grid-2">
       <div class="field-wrap">
@@ -345,18 +353,20 @@ function updateAgDept() {
 
 async function doAddGraduate() {
   const id     = document.getElementById('ag-id').value.trim();
-  const name   = document.getElementById('ag-name').value.trim();
+  const fname  = document.getElementById('ag-fname').value.trim();
+  const mname  = document.getElementById('ag-mname').value.trim();
+  const lname  = document.getElementById('ag-lname').value.trim();
   const colId  = parseInt(document.getElementById('ag-col').value)  || 0;
   const deptId = parseInt(document.getElementById('ag-dept').value) || 0;
   const year   = document.getElementById('ag-year').value.trim();
   const gpa    = parseFloat(document.getElementById('ag-gpa').value);
   const honors = document.getElementById('ag-honors').value;
 
-  if (!id || !name || !colId || !deptId || !year || isNaN(gpa)) {
+  if (!id || !fname || !lname || !colId || !deptId || !year || isNaN(gpa)) {
     toast('Please fill in all required fields.', 'error'); return;
   }
   try {
-    await api.createGraduate({ id, name, college_id: colId, dept_id: deptId, graduation_year: year, honors, gpa });
+    await api.createGraduate({ id, firstName: fname, middleName: mname, lastName: lname, college_id: colId, dept_id: deptId, graduation_year: year, honors, gpa });
     toast('Graduate record saved.', 'success');
     _archMeta = { colleges: [], departments: [] }; // reset cache
     closeModal();

@@ -52,7 +52,9 @@ CREATE TABLE users (
 -- ── Students ─────────────────────────────
 CREATE TABLE students (
   id          VARCHAR(20)  NOT NULL PRIMARY KEY,  -- e.g. 238101
-  name        VARCHAR(150) NOT NULL,
+  firstName   VARCHAR(100) NOT NULL,
+  middleName  VARCHAR(100),
+  lastName    VARCHAR(100) NOT NULL,
   dept_id     INT          NOT NULL,
   year_level  TINYINT      NOT NULL DEFAULT 1,
   birthday    VARCHAR(10)  NOT NULL,              -- mmddyyyy (login password)
@@ -111,7 +113,9 @@ CREATE TABLE grades (
 -- ── Graduates (Archive) ───────────────────
 CREATE TABLE graduates (
   id              VARCHAR(20)  NOT NULL PRIMARY KEY,
-  name            VARCHAR(150) NOT NULL,
+  firstName       VARCHAR(100) NOT NULL,
+  middleName      VARCHAR(100),
+  lastName        VARCHAR(100) NOT NULL,
   college_id      INT          NOT NULL,
   dept_id         INT          NOT NULL,
   graduation_year VARCHAR(20)  NOT NULL,   -- e.g. 2023-2024
@@ -153,15 +157,15 @@ INSERT INTO users (id, name, role, username, password, active, college_id, dept_
 -- then UPDATE users SET password = '<hash>' WHERE username = '<user>';
 
 -- Students
-INSERT INTO students (id, name, dept_id, year_level, birthday, status) VALUES
-  ('238101', 'Alice Mendoza',    1, 2, '02242003', 'enrolled'),
-  ('238102', 'Brian Santos',     1, 2, '06151003', 'enrolled'),
-  ('238103', 'Carla Reyes',      1, 3, '11302002', 'enrolled'),
-  ('238104', 'Dennis Cruz',      1, 3, '04082002', 'enrolled'),
-  ('238105', 'Eva Lim',          1, 1, '09192004', 'enrolled'),
-  ('238106', 'Frank Torres',     2, 1, '12252004', 'enrolled'),
-  ('238107', 'Grace Villanueva', 2, 2, '03072003', 'enrolled'),
-  ('238108', 'Henry Dela Cruz',  1, 1, '07182004', 'enrolled');
+INSERT INTO students (id, firstName, middleName, lastName, dept_id, year_level, birthday, status) VALUES
+  ('238101', 'Alice', '', 'Mendoza',    1, 2, '02242003', 'enrolled'),
+  ('238102', 'Brian', '', 'Santos',     1, 2, '06151003', 'enrolled'),
+  ('238103', 'Carla', '', 'Reyes',      1, 3, '11302002', 'enrolled'),
+  ('238104', 'Dennis', '', 'Cruz',      1, 3, '04082002', 'enrolled'),
+  ('238105', 'Eva', '', 'Lim',          1, 1, '09192004', 'enrolled'),
+  ('238106', 'Frank', '', 'Torres',     2, 1, '12252004', 'enrolled'),
+  ('238107', 'Grace', '', 'Villanueva', 2, 2, '03072003', 'enrolled'),
+  ('238108', 'Henry', 'Dela', 'Cruz',  1, 1, '07182004', 'enrolled');
 
 -- Subjects
 INSERT INTO subjects (id, code, name, units, year, sem, dept_id) VALUES
@@ -236,15 +240,15 @@ INSERT INTO grades (student_id, section_id, grade) VALUES
   ('238106',20,'1.50'),('238107',21,'2.00');
 
 -- Graduates
-INSERT INTO graduates (id, name, college_id, dept_id, graduation_year, honors, gpa) VALUES
-  ('220001','Ramon Bautista',  1,1,'2022-2023','Cum Laude',      1.45),
-  ('220002','Liza Fernandez',  1,1,'2022-2023','',               2.10),
-  ('220003','Carlo Navarro',   1,2,'2022-2023','Magna Cum Laude',1.25),
-  ('220004','Shiela Manalo',   1,1,'2022-2023','',               2.35),
-  ('230001','Jessa Ocampo',    1,1,'2023-2024','Summa Cum Laude',1.05),
-  ('230002','Mark Ramos',      1,1,'2023-2024','Cum Laude',      1.48),
-  ('230003','Aileen Soriano',  1,2,'2023-2024','',               2.20),
-  ('230004','Paolo Domingo',   1,2,'2023-2024','Magna Cum Laude',1.30),
-  ('230005','Nina Castillo',   1,1,'2023-2024','',               2.55),
-  ('230006','Kevin Tolentino', 2,3,'2023-2024','',               2.00),
-  ('230007','Diana Reyes',     2,4,'2023-2024','Cum Laude',      1.40);
+INSERT INTO graduates (id, firstName, middleName, lastName, college_id, dept_id, graduation_year, honors, gpa) VALUES
+  ('220001','Ramon', '', 'Bautista',  1,1,'2022-2023','Cum Laude',      1.45),
+  ('220002','Liza', '', 'Fernandez',  1,1,'2022-2023','',               2.10),
+  ('220003','Carlo', '', 'Navarro',   1,2,'2022-2023','Magna Cum Laude',1.25),
+  ('220004','Shiela', '', 'Manalo',   1,1,'2022-2023','',               2.35),
+  ('230001','Jessa', '', 'Ocampo',    1,1,'2023-2024','Summa Cum Laude',1.05),
+  ('230002','Mark', '', 'Ramos',      1,1,'2023-2024','Cum Laude',      1.48),
+  ('230003','Aileen', '', 'Soriano',  1,2,'2023-2024','',               2.20),
+  ('230004','Paolo', '', 'Domingo',   1,2,'2023-2024','Magna Cum Laude',1.30),
+  ('230005','Nina', '', 'Castillo',   1,1,'2023-2024','',               2.55),
+  ('230006','Kevin', '', 'Tolentino', 2,3,'2023-2024','',               2.00),
+  ('230007','Diana', '', 'Reyes',     2,4,'2023-2024','Cum Laude',      1.40);

@@ -345,8 +345,16 @@ async function showCreateStudentModal() {
       </div>
     </div>
     <div class="field-wrap">
-      <label class="field-label">Full Name</label>
-      <input id="cs2-name" class="field-input" placeholder="Full name" />
+      <label class="field-label">First Name</label>
+      <input id="cs2-fname" class="field-input" placeholder="First name" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Middle Name <span class="text-muted">(optional)</span></label>
+      <input id="cs2-mname" class="field-input" placeholder="Middle name" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Last Name</label>
+      <input id="cs2-lname" class="field-input" placeholder="Last name" />
     </div>
     <div class="grid-2">
       <div class="field-wrap">
@@ -370,12 +378,14 @@ async function showCreateStudentModal() {
 async function doCreateStudent() {
   const id   = document.getElementById('cs2-id').value.trim();
   const bday = document.getElementById('cs2-bday').value.trim();
-  const name = document.getElementById('cs2-name').value.trim();
+  const fname = document.getElementById('cs2-fname').value.trim();
+  const mname = document.getElementById('cs2-mname').value.trim();
+  const lname = document.getElementById('cs2-lname').value.trim();
   const dept = parseInt(document.getElementById('cs2-dept').value) || 0;
   const year = parseInt(document.getElementById('cs2-year').value);
-  if (!id || !bday || !name || !dept) { toast('Please fill all required fields.', 'error'); return; }
+  if (!id || !bday || !fname || !lname || !dept) { toast('Please fill all required fields.', 'error'); return; }
   try {
-    await api.createStudent({ id, name, dept_id: dept, year_level: year, birthday: bday });
+    await api.createStudent({ id, firstName: fname, middleName: mname, lastName: lname, dept_id: dept, year_level: year, birthday: bday });
     toast('Student created.', 'success');
     closeModal();
     renderRegAccounts();
@@ -401,10 +411,24 @@ function filterStudentTable(query) {
 
 /* ── Edit Student ────────────────────── */
 function showEditStudentModal(stuId, currentName, currentYear, currentStatus) {
+  // Parse full name into components (currentName is the combined name from API)
+  const nameParts = currentName.trim().split(/\s+/);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts[nameParts.length - 1] || '';
+  const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
+
   showModal('Edit Student', `
     <div class="field-wrap">
-      <label class="field-label">Full Name</label>
-      <input id="es-name" class="field-input" value="${esc(currentName)}" />
+      <label class="field-label">First Name</label>
+      <input id="es-fname" class="field-input" value="${esc(firstName)}" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Middle Name <span class="text-muted">(optional)</span></label>
+      <input id="es-mname" class="field-input" value="${esc(middleName)}" />
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Last Name</label>
+      <input id="es-lname" class="field-input" value="${esc(lastName)}" />
     </div>
     <div class="grid-2">
       <div class="field-wrap">
@@ -429,12 +453,14 @@ function showEditStudentModal(stuId, currentName, currentYear, currentStatus) {
 }
 
 async function doEditStudent(stuId) {
-  const name = document.getElementById('es-name').value.trim();
+  const fname = document.getElementById('es-fname').value.trim();
+  const mname = document.getElementById('es-mname').value.trim();
+  const lname = document.getElementById('es-lname').value.trim();
   const year = parseInt(document.getElementById('es-year').value);
   const stat = document.getElementById('es-status').value;
   const bday = document.getElementById('es-bday').value.trim();
-  if (!name) { toast('Name is required.', 'error'); return; }
-  const data = { id: stuId, name, year_level: year, status: stat };
+  if (!fname || !lname) { toast('First and last names are required.', 'error'); return; }
+  const data = { id: stuId, firstName: fname, middleName: mname, lastName: lname, year_level: year, status: stat };
   if (bday) data.birthday = bday;
   try {
     await api.updateStudent(data);

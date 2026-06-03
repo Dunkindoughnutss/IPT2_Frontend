@@ -29,7 +29,7 @@ if (!empty($_GET['college_id'])) { $where[] = 'g.college_id = ?';      $params[]
 if (!empty($_GET['dept_id']))    { $where[] = 'g.dept_id = ?';         $params[] = (int)$_GET['dept_id']; }
 if (!empty($_GET['year']))       { $where[] = 'g.graduation_year = ?'; $params[] = $_GET['year']; }
 
-$sql = "SELECT g.id, g.name, g.college_id, g.dept_id,
+$sql = "SELECT g.id, g.firstName, g.middleName, g.lastName, g.college_id, g.dept_id,
                g.graduation_year, g.honors, g.gpa,
                c.name AS college_name, d.name AS dept_name
           FROM graduates g
@@ -46,6 +46,8 @@ foreach ($rows as &$r) {
     $r['college_id'] = (int)$r['college_id'];
     $r['dept_id']    = (int)$r['dept_id'];
     $r['gpa']        = (float)$r['gpa'];
+    // Build full name for backwards compatibility
+    $r['name'] = trim($r['firstName'] . ' ' . ($r['middleName'] ? $r['middleName'] . ' ' : '') . $r['lastName']);
 }
 
 ok($rows);

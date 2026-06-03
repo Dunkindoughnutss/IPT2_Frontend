@@ -34,7 +34,8 @@ if ($me['role'] === 'Student') {
 }
 
 $sql = "SELECT g.id, g.student_id, g.section_id, g.grade,
-               s.name  AS student_name, s.year_level,
+               CONCAT(s.firstName, ' ', IF(s.middleName != '', CONCAT(s.middleName, ' '), ''), s.lastName) AS student_name,
+               s.year_level,
                sec.sy, sec.sem, sec.section_name, sec.submitted,
                sub.id   AS subject_id,  sub.code AS subject_code,
                sub.name AS subject_name, sub.units, sub.year AS subject_year,

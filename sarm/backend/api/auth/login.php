@@ -51,16 +51,19 @@ if ($user && $user['active'] && password_verify($password, $user['password'])) {
 
 // ── Student login (ID + birthday) ─────────
 $stmt = $db->prepare(
-    'SELECT id, name, dept_id, year_level, status
+    'SELECT id, firstName, middleName, lastName, dept_id, year_level, status
        FROM students WHERE id = ? AND birthday = ? LIMIT 1'
 );
 $stmt->execute([$username, $password]);
 $student = $stmt->fetch();
 
 if ($student && $student['status'] === 'enrolled') {
+    // Build full name from components
+    $fullName = trim($student['firstName'] . ' ' . ($student['middleName'] ? $student['middleName'] . ' ' : '') . $student['lastName']);
+
     $user = [
         'id'         => null,
-        'name'       => $student['name'],
+        'name'       => $fullName,
         'role'       => 'Student',
         'student_id' => $student['id'],
         'dept_id'    => (int)$student['dept_id'],

@@ -1,7 +1,7 @@
 <?php
 // ══════════════════════════════════════════
 // api/students/update.php   POST
-// Body: { id, name?, year_level?, status?, birthday? }
+// Body: { id, firstName?, middleName?, lastName?, year_level?, status?, birthday? }
 // Auth: Registrar
 // ══════════════════════════════════════════
 
@@ -23,9 +23,17 @@ if (!$chk->fetch()) fail('Student not found.', 404);
 $sets   = [];
 $params = [];
 
-if (isset($b['name']) && trim($b['name']) !== '') {
-    $sets[]   = 'name = ?';
-    $params[] = trim($b['name']);
+if (isset($b['firstName']) && trim($b['firstName']) !== '') {
+    $sets[]   = 'firstName = ?';
+    $params[] = trim($b['firstName']);
+}
+if (isset($b['middleName'])) {
+    $sets[]   = 'middleName = ?';
+    $params[] = trim($b['middleName']);
+}
+if (isset($b['lastName']) && trim($b['lastName']) !== '') {
+    $sets[]   = 'lastName = ?';
+    $params[] = trim($b['lastName']);
 }
 if (isset($b['year_level'])) {
     $sets[]   = 'year_level = ?';

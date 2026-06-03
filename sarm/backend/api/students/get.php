@@ -66,13 +66,13 @@ if (!empty($_GET['year_level'])) {
 //Process the frontend search parameter
 if (!empty($_GET['search'])) {
     // Allows searching by name OR student ID
-    $where[]  = '(s.name LIKE ? OR s.id LIKE ?)';
     $searchTerm = '%' . trim($_GET['search']) . '%';
+    $where[]  = "(CONCAT(s.firstName, ' ', s.lastName) LIKE ? OR s.id LIKE ?)";
     $params[] = $searchTerm;
     $params[] = $searchTerm;
 }
 
-$sql = "SELECT s.id, s.name, s.dept_id, s.year_level, s.status,
+$sql = "SELECT s.id, s.firstName, s.middleName, s.lastName, s.dept_id, s.year_level, s.status,
                d.name AS dept_name, c.id AS college_id, c.name AS college_name
           FROM students s
           JOIN departments d ON d.id = s.dept_id
@@ -88,6 +88,8 @@ foreach ($data as &$r) {
     $r['dept_id']   = (int)$r['dept_id'];
     $r['college_id']= (int)$r['college_id'];
     $r['year_level']= (int)$r['year_level'];
+    // Build full name for backwards compatibility
+    $r['name'] = trim($r['firstName'] . ' ' . ($r['middleName'] ? $r['middleName'] . ' ' : '') . $r['lastName']);
 }
 
 ok($data);
