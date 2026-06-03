@@ -24,9 +24,12 @@
       <label class="field-label">Username</label>
       <input id="inp-user" type="text" class="field-input" placeholder="Enter username" autocomplete="username" />
     </div>
-    <div class="field-wrap">
+    <div class="field-wrap field-wrap-password">
       <label class="field-label">Password</label>
-      <input id="inp-pass" type="password" class="field-input" placeholder="Enter password" autocomplete="current-password" />
+      <div class="password-input-wrap">
+        <input id="inp-pass" type="password" class="field-input" placeholder="Enter password" autocomplete="current-password" />
+        <button id="pwd-toggle" type="button" class="password-toggle" onclick="togglePasswordVisibility()" aria-label="Show password">👁</button>
+      </div>
     </div>
 
     <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>

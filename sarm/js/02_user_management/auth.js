@@ -32,6 +32,22 @@ async function doLogin() {
   }
 }
 
+function togglePasswordVisibility() {
+  const input = document.getElementById('inp-pass');
+  const button = document.getElementById('pwd-toggle');
+  if (!input || !button) return;
+
+  if (input.type === 'password') {
+    input.type = 'text';
+    button.innerText = '🙈';
+    button.setAttribute('aria-label', 'Hide password');
+  } else {
+    input.type = 'password';
+    button.innerText = '👁';
+    button.setAttribute('aria-label', 'Show password');
+  }
+}
+
 // Allow Enter key on login fields
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('inp-pass')?.addEventListener('keydown', e => {
