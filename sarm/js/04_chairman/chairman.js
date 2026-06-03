@@ -336,53 +336,152 @@ async function doReassign(secId) {
 async function showEnrollModal(secId, secName) {
   showModal(`Students — ${secName}`, `<div class="text-muted text-sm" style="padding:12px">Loading…</div>`);
   try {
-    const [enrolled, allStudents] = await Promise.all([
+    const [enrolled, meta] = await Promise.all([
       api.getEnrollments({ section_id: secId }),
-      api.getStudents(),
+      api.getColleges(),
     ]);
-    const enrolledIds = enrolled.map(e => e.student_id);
 
-    // Apply strict enrollment display parameters (department boundary & active indicators)
-    const deptStudents = allStudents
-      .filter(s => s.dept_id === currentUser.dept_id && s.active)
+    window._chairEnrollState = {
+      sectionId: secId,
+      collegeId: currentUser.college_id || '',
+      deptId: currentUser.dept_id || '',
+      enrolledIds: enrolled.map(e => e.student_id),
+      colleges: meta.colleges || [],
+      departments: meta.departments || [],
+    };
+
+    renderEnrollModal(secName);
+    await refreshEnrollStudents();
+  } catch (err) {
+    apiErr(err);
+  }
+}
+
+function renderEnrollModal(secName) {
+  const state = window._chairEnrollState || {};
+  const collegeId = state.collegeId ? parseInt(state.collegeId) : '';
+  const deptId = state.deptId ? parseInt(state.deptId) : '';
+  const colleges = state.colleges || [];
+  const departments = state.departments || [];
+
+  const visibleColleges = currentUser.role === 'Chairman'
+    ? colleges.filter(c => c.id === currentUser.college_id)
+    : colleges;
+
+  const visibleDepartments = collegeId
+    ? departments.filter(d => d.college_id === collegeId)
+    : departments.filter(d => currentUser.role !== 'Chairman' || d.college_id === currentUser.college_id);
+
+  showModal(`Students — ${secName}`, `
+    <div class="grid-2 mb-12">
+      <div class="field-wrap">
+        <label class="field-label">College</label>
+        <select id="en-college" class="field-select" onchange="setEnrollFilter('collegeId', this.value)">
+          <option value="">All Colleges</option>
+          ${visibleColleges.map(c => `<option value="${c.id}" ${collegeId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">Course</label>
+        <select id="en-dept" class="field-select" onchange="setEnrollFilter('deptId', this.value)">
+          <option value="">All Courses</option>
+          ${visibleDepartments.map(d => `<option value="${d.id}" ${deptId === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div id="enroll-modal-body"><div class="text-muted text-sm" style="padding:12px">Loading student list…</div></div>
+  `);
+}
+
+async function setEnrollFilter(key, value) {
+  const state = window._chairEnrollState || {};
+  if (!state) return;
+
+  state[key] = value ? parseInt(value) : '';
+  if (key === 'collegeId') {
+    state.deptId = '';
+  }
+
+  const collegeSelect = document.getElementById('en-college');
+  const deptSelect = document.getElementById('en-dept');
+  if (collegeSelect && deptSelect) {
+    const departments = state.departments || [];
+    const selectedCollege = state.collegeId ? parseInt(state.collegeId) : null;
+    const visibleDepartments = selectedCollege
+      ? departments.filter(d => d.college_id === selectedCollege)
+      : departments.filter(d => currentUser.role !== 'Chairman' || d.college_id === currentUser.college_id);
+
+    deptSelect.innerHTML = `<option value="">All Courses</option>` + visibleDepartments.map(d =>
+      `<option value="${d.id}" ${state.deptId === d.id ? 'selected' : ''}>${esc(d.name)}</option>`
+    ).join('');
+  }
+
+  await refreshEnrollStudents();
+}
+
+async function refreshEnrollStudents() {
+  const state = window._chairEnrollState || {};
+  if (!state.sectionId) return;
+
+  try {
+    const [enrolled, students] = await Promise.all([
+      api.getEnrollments({ section_id: state.sectionId }),
+      api.getStudents({ college_id: state.collegeId || undefined, dept_id: state.deptId || undefined }),
+    ]);
+
+    state.enrolledIds = enrolled.map(e => e.student_id);
+
+    const activeStudents = students
+      .filter(s => s.status === 'enrolled')
       .sort((a, b) => (a.year_level || 0) - (b.year_level || 0));
 
-    document.getElementById('modal-body').innerHTML = deptStudents.length === 0
-      ? `<div class="text-muted text-sm" style="padding:12px">No active students found in your department roster.</div>`
+    const studentRows = activeStudents.map(s => `<tr>
+        <td class="mono text-sm">${esc(s.id)}</td>
+        <td>
+          <button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(s.id)}" data-student-name="${esc(s.name)}" onclick="openStudentGrades(this)">
+            ${esc(s.name)}
+          </button>
+        </td>
+        <td><span class="badge badge-muted">Year ${s.year_level}</span></td>
+        <td>
+          <input type="checkbox"
+            ${state.enrolledIds.includes(s.id) ? 'checked' : ''}
+            onchange="toggleEnroll('${s.id}', ${state.sectionId}, this)" />
+        </td>
+      </tr>`).join('');
+
+    document.getElementById('enroll-modal-body').innerHTML = activeStudents.length === 0
+      ? `<div class="text-muted text-sm" style="padding:12px">No enrolled students found for the selected college/course.</div>`
       : `<div class="alert alert-info mb-12" style="font-size:12px; padding:8px 12px">
-          Showing active department students. Changes save instantly.
+          Showing enrolled students for the selected college and course. Changes save instantly.
          </div>
          <div class="table-wrap" style="max-height: 400px; overflow-y: auto;">
           <table>
             <thead><tr><th>ID</th><th>Name</th><th>Year</th><th>Enrolled</th></tr></thead>
             <tbody>
-              ${deptStudents.map(s => `<tr>
-                <td class="mono text-sm">${esc(s.id)}</td>
-                <td>
-                  <button type="button" style="background:none;border:none;color:var(--blue);text-decoration:underline;padding:0;cursor:pointer" data-student-id="${esc(s.id)}" data-student-name="${esc(s.name)}" onclick="openStudentGrades(this)">
-                    ${esc(s.name)}
-                  </button>
-                </td>
-                <td><span class="badge badge-muted">Year ${s.year_level}</span></td>
-                <td>
-                  <input type="checkbox"
-                    ${enrolledIds.includes(s.id) ? 'checked' : ''}
-                    onchange="toggleEnroll('${s.id}', ${secId}, this)" />
-                </td>
-              </tr>`).join('')}
+              ${studentRows}
             </tbody>
           </table>
          </div>`;
-  } catch (err) { apiErr(err); }
+  } catch (err) {
+    apiErr(err);
+  }
 }
 
 async function toggleEnroll(studentId, sectionId, checkboxElement) {
   const originalState = checkboxElement.checked;
   try {
     await api.toggleEnrollment({ student_id: studentId, section_id: sectionId, enroll: originalState });
+    const state = window._chairEnrollState;
+    if (state) {
+      if (originalState && !state.enrolledIds.includes(studentId)) {
+        state.enrolledIds.push(studentId);
+      } else if (!originalState) {
+        state.enrolledIds = state.enrolledIds.filter(id => id !== studentId);
+      }
+    }
   } catch (err) {
     apiErr(err);
-    // UI state auto-rollback on constraint execution failures
     checkboxElement.checked = !originalState;
   }
 }

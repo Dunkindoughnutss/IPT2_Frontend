@@ -1,7 +1,7 @@
 <?php
 // ══════════════════════════════════════════
 // api/students/get.php   GET
-// Query params: dept_id (optional filter), search (optional text query)
+// Query params: college_id (optional), dept_id (optional filter), search (optional text query)
 // Auth: Registrar, Dean, Chairman, Faculty
 // ══════════════════════════════════════════
 
@@ -18,8 +18,28 @@ $params = [];
 
 // Scope by role
 if ($me['role'] === 'Chairman' || $me['role'] === 'Faculty') {
-    $where[]  = 's.dept_id = ?';
-    $params[] = $me['dept_id'];
+    if ($me['role'] === 'Chairman' && !empty($_GET['college_id'])) {
+        if ((int)$_GET['college_id'] !== $me['college_id']) {
+            fail('Forbidden college filter.', 403);
+        }
+        // Allow the chairman to list students across their own college.
+    } elseif (!empty($_GET['dept_id'])) {
+        if ($me['role'] === 'Chairman') {
+            $deptStmt = $db->prepare('SELECT college_id FROM departments WHERE id = ? LIMIT 1');
+            $deptStmt->execute([(int)$_GET['dept_id']]);
+            $deptRow = $deptStmt->fetch();
+            if (!$deptRow || (int)$deptRow['college_id'] !== $me['college_id']) {
+                fail('Forbidden department filter.', 403);
+            }
+        } elseif ($me['role'] === 'Faculty' && (int)$_GET['dept_id'] !== $me['dept_id']) {
+            fail('Forbidden department filter.', 403);
+        }
+        $where[]  = 's.dept_id = ?';
+        $params[] = (int)$_GET['dept_id'];
+    } else {
+        $where[]  = 's.dept_id = ?';
+        $params[] = $me['dept_id'];
+    }
 } elseif ($me['role'] === 'Dean') {
     $where[]  = 'd.college_id = ?';
     $params[] = $me['college_id'];
@@ -31,8 +51,12 @@ if (!empty($_GET['college_id'])) {
     $params[] = (int)$_GET['college_id'];
 }
 if (!empty($_GET['dept_id'])) {
-    $where[]  = 's.dept_id = ?';
-    $params[] = (int)$_GET['dept_id'];
+    if ($me['role'] === 'Chairman' || $me['role'] === 'Faculty') {
+        // Already handled above to enforce scope.
+    } else {
+        $where[]  = 's.dept_id = ?';
+        $params[] = (int)$_GET['dept_id'];
+    }
 }
 if (!empty($_GET['year_level'])) {
     $where[]  = 's.year_level = ?';
