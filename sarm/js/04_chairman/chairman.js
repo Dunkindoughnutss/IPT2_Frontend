@@ -153,7 +153,6 @@ async function renderChairAssign() {
   } catch (err) { apiErr(err); }
 }
 
-<<<<<<< HEAD
 /* ── Create Subject Modal ────────────────────── */
 function showCreateSubjectModal() {
   const deptLabel = currentUser.dept_name || `Department ID: ${currentUser.dept_id}`;
@@ -220,8 +219,6 @@ async function doCreateSubject() {
   } catch (err) { apiErr(err); }
 }
 
-/* ── Create Section Modal ────────────────────── */
-=======
 async function getChairmanFailingStudents() {
   const sections = await api.getSections({ submitted: 1 });
   if (!sections.length) return [];
@@ -246,8 +243,7 @@ async function getChairmanFailingStudents() {
   return Object.entries(failMap).map(([id, v]) => ({ id, ...v }));
 }
 
-/* ── Create Section Modal ────────────── */
->>>>>>> 9ace893a73feaa51be4564b026880291a1103b34
+/* ── Create Section Modal ────────────────────── */
 function showCreateSectionModal(preSubjId = null) {
   const subjects = window._chairSubjects || [];
   const faculty  = window._chairFaculty  || [];
